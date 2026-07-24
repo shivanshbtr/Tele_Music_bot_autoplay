@@ -27,7 +27,7 @@ A fully async Telegram bot that searches for music, streams audio, manages a pla
 
 ```bash
 git clone <repo>
-cd telegram-music-bot
+cd Tele_Music_bot_autoplay
 pip install -r requirements.txt
 ```
 
@@ -56,7 +56,7 @@ python bot.py
 ## 📁 Project Structure
 
 ```
-telegram-music-bot/
+Tele_Music_bot_autoplay/
 ├── bot.py                    # Entry point, handler registration
 ├── config.py                 # Configuration & constants
 ├── requirements.txt
