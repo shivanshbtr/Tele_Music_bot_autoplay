@@ -99,6 +99,8 @@ Tele_Music_bot_autoplay/
 | `/skip` | Skip to next queued track |
 | `/clear` | Clear queue and stop |
 | `/now` | Show now-playing card |
+| `/autoplay` | Start seamless continuous playback |
+| `/stop` | Stop autoplay |
 | `/history` | Recently played tracks |
 | `/playlist` | Saved playlists & liked tracks |
 
@@ -180,6 +182,51 @@ app.run_webhook(
     webhook_url=f"https://yourdomain.com/{cfg.TELEGRAM_BOT_TOKEN}",
 )
 ```
+
+---
+
+## 🛡 Troubleshooting: "Sign in to confirm you're not a bot"
+
+If track downloads start failing with this YouTube error (via yt-dlp),
+it's YouTube's bot-detection wall — common when a bot makes frequent
+automated requests from the same IP, and more likely on outdated yt-dlp
+versions. Two things are already built in to reduce it:
+
+1. **Multi-client fallback** — `services/audio_streamer.py` tries yt-dlp's
+   `android` client first, then `ios`, then `web`. The mobile clients use
+   a different backend flow that YouTube's bot-check rarely triggers on.
+   This alone resolves the wall most of the time, with no setup needed.
+
+2. **Optional cookies file** — if the wall still appears, you can
+   authenticate yt-dlp with a real YouTube session:
+   1. On any computer, log into youtube.com with a Google account.
+   2. Install a "Get cookies.txt" browser extension (e.g. *Get
+      cookies.txt LOCALLY* for Chrome/Firefox) and export cookies for
+      `youtube.com`.
+   3. Copy the exported `cookies.txt` into the project root — same
+      folder as `bot.py` — on whichever machine runs the bot (Windows or
+      Termux both work the same way, since it's just a file path).
+   4. Restart the bot. `config.py` picks it up automatically via
+      `YTDLP_COOKIES_FILE` (defaults to `cookies.txt` in the project
+      root; override the path in `.env` if you keep it elsewhere).
+
+   No `.env` entry is required if the file is simply named `cookies.txt`
+   and sits next to `bot.py`.
+
+3. **Keep yt-dlp updated.** YouTube changes its internals periodically,
+   and yt-dlp usually ships a patch within days. An outdated yt-dlp
+   (this repo was previously pinned to a version from August 2024) is
+   itself one of the most common causes of the bot-check wall. Update
+   with:
+   ```bash
+   pip install -U yt-dlp
+   ```
+   (On Termux: `pip install -U yt-dlp --break-system-packages` if you hit
+   an externally-managed-environment error.)
+
+If the wall persists after all three steps, it usually means YouTube has
+temporarily flagged the IP itself (common on shared/cloud IPs) — cookies
+from a real account are the most reliable fix in that case.
 
 ---
 
