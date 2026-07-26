@@ -163,7 +163,11 @@ class UserSession:
         if not self.current_track:
             return False
         self.current_track.liked = True
-        if self.current_track not in self.liked_tracks:
+        already_liked = any(
+            t.external_id == self.current_track.external_id
+            for t in self.liked_tracks
+        )
+        if not already_liked:
             self.liked_tracks.append(self.current_track)
         return True
 
