@@ -159,16 +159,15 @@ class AutoplaySession:
                     session = session_manager.get(self.user_id)
                     next_track = session.next_track()   # pops queue → current_track
                     if not next_track:
-                        # Queue drained — refill and retry
+                        # Queue drained — refill and pop immediately (no re-wait)
                         await self._notify("📭 Queue empty — fetching more tracks...")
                         added = await recommender.auto_queue_refill(session, threshold=99)
                         if added:
                             await self._notify(
                                 f"🔀 _Added {len(added)} tracks — continuing..._"
                             )
-                            # current stays the same; loop back to fill+wait
-                            continue
-                        else:
+                            next_track = session.next_track()
+                        if not next_track:
                             await self._notify(
                                 "⏹ No more recommendations available. Autoplay stopped."
                             )
@@ -179,12 +178,6 @@ class AutoplaySession:
                     await self._send_track(next_track)
                     self._autoplay_count += 1
                     current = next_track   # ← timer on next iteration = this song's duration
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error("Autoplay loop error for user %d: %s", self.user_id, e)
-                await asyncio.sleep(3)
 
             except asyncio.CancelledError:
                 break
