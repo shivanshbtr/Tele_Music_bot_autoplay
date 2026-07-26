@@ -119,18 +119,20 @@ async def _download_and_send(message, context, track, session):
         await audio_streamer.cleanup(file_path)
 
     # ── Autoplay pipeline ──────────────────────────────────────────────────
-    engine = autoplay_manager.start(
-        user_id=session.user_id,
-        chat_id=message.chat_id,
-        bot=context.bot,
-    )
-    await engine._maybe_fill_queue(session)
-    if session.queue:
-        next_item = session.queue[0].track
-        asyncio.create_task(
-            engine._prefetch(next_item),
-            name=f"prefetch_{next_item.external_id}",
-        )
+    # IMPORTANT: only refresh an ALREADY-RUNNING autoplay session here.
+    # Never call autoplay_manager.start() from this helper — it runs on
+    # every manual play/skip/search-select, so an unconditional start()
+    # would silently (re)launch autoplay the moment any track finishes
+    # downloading, even seconds after the user explicitly hit /stop.
+    engine = autoplay_manager.get(session.user_id)
+    if engine and engine.running:
+        await engine._maybe_fill_queue(session)
+        if session.queue:
+            next_item = session.queue[0].track
+            asyncio.create_task(
+                engine._prefetch(next_item),
+                name=f"prefetch_{next_item.external_id}",
+            )
 
 
 async def _play_track(update: Update, context, track_ext_id: str):
