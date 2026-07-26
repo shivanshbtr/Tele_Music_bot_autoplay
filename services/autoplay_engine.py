@@ -161,11 +161,17 @@ class AutoplaySession:
                     if not next_track:
                         # Queue drained — refill and pop immediately (no re-wait)
                         await self._notify("📭 Queue empty — fetching more tracks...")
+                        if not self.running:
+                            break
                         added = await recommender.auto_queue_refill(session, threshold=99)
+                        if not self.running:
+                            break
                         if added:
                             await self._notify(
                                 f"🔀 _Added {len(added)} tracks — continuing..._"
                             )
+                            if not self.running:
+                                break
                             next_track = session.next_track()
                         if not next_track:
                             await self._notify(
@@ -173,6 +179,11 @@ class AutoplaySession:
                             )
                             self.running = False
                             break
+
+                    # ── Final guard: a /stop during any of the awaits above
+                    # (notify / refill) must not let a track slip through.
+                    if not self.running:
+                        break
 
                     # ── Send it — timer next round uses THIS track's duration
                     await self._send_track(next_track)
