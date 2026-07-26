@@ -18,6 +18,14 @@ class Config:
         default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", "user_token_here(get from @botfather)")
     )
 
+    # ── yt-dlp / YouTube auth ────────────────────────────────────────────────
+    # Path to a Netscape-format cookies.txt exported from a logged-in YouTube
+    # session. Without this, YouTube frequently throws up the "Sign in to
+    # confirm you're not a bot" wall on repeated/automated requests.
+    YTDLP_COOKIES_FILE: str = field(
+        default_factory=lambda: os.getenv("YTDLP_COOKIES_FILE", "cookies.txt")
+    )
+
     # ── Playback Settings ─────────────────────────────────────────────────────
     MAX_QUEUE_SIZE: int = 50
     AUTO_REFILL_COUNT: int = 3      # how many tracks to add on auto-refill
