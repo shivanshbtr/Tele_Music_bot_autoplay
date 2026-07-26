@@ -109,6 +109,11 @@ class RecommendationEngine:
         """Build a mood-based playlist."""
         tracks = await music_api.get_mood_tracks(mood_key=mood_key, limit=limit)
         session.preferred_moods = list({mood_key} | set(session.preferred_moods))[:5]
+        # Tag each track with the mood's descriptive tags — this is what
+        # UserSession.get_taste_profile() scores on to build top_tags.
+        mood_tags = cfg.MOODS.get(mood_key, {}).get("tags", [mood_key])
+        for t in tracks:
+            t.tags = list(dict.fromkeys(t.tags + mood_tags))
         return tracks
 
     async def get_genre_playlist(
@@ -119,6 +124,11 @@ class RecommendationEngine:
         if genre not in session.preferred_genres:
             session.preferred_genres.insert(0, genre)
             session.preferred_genres = session.preferred_genres[:10]
+        # Tag each track with its genre — this is what get_taste_profile()
+        # scores on to build top_genres. music_api never sets this on its
+        # own since plain YTMusic search results don't carry a genre field.
+        for t in tracks:
+            t.genre = genre
         return tracks
 
     async def get_artist_recommendations(
