@@ -129,8 +129,10 @@ class CommandHandlers:
         count = len(session.queue)
         session.queue.clear()
         session.current_track = None
+        # Also stop autoplay so it doesn't keep running against an empty session
+        await autoplay_manager.stop(user.id)
         await update.message.reply_text(
-            f"🗑 Cleared {count} track(s) from queue."
+            f"🗑 Cleared {count} track(s) from queue. Autoplay stopped."
         )
 
     # ── /history ──────────────────────────────────────────────────────────────
