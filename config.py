@@ -26,6 +26,33 @@ class Config:
         default_factory=lambda: os.getenv("YTDLP_COOKIES_FILE", "cookies.txt")
     )
 
+    # Telegram user ID allowed to use /updatecookies (your numeric user ID —
+    # get it from @userinfobot). Only this user can push a new cookies.txt.
+    # Left blank = command is disabled entirely (safer default).
+    OWNER_ID: int = field(
+        default_factory=lambda: int(os.getenv("TELEGRAM_OWNER_ID", "0") or 0)
+    )
+
+    # Comma-separated list of numeric Telegram user IDs allowed to use the
+    # bot at all, e.g. "111111111,222222222". The owner (TELEGRAM_OWNER_ID)
+    # is always implicitly allowed even if not listed here.
+    # Leave both this and TELEGRAM_OWNER_ID unset to keep the bot open to
+    # everyone (old behavior). Set either one to lock the bot down to
+    # just those accounts — everyone else is silently ignored.
+    ALLOWED_USER_IDS: List[int] = field(
+        default_factory=lambda: [
+            int(uid.strip())
+            for uid in os.getenv("TELEGRAM_ALLOWED_USER_IDS", "").split(",")
+            if uid.strip()
+        ]
+    )
+
+    def is_allowed(self, user_id: int) -> bool:
+        """Whether `user_id` may use the bot at all."""
+        if not self.ALLOWED_USER_IDS and not self.OWNER_ID:
+            return True  # no restriction configured — open bot
+        return user_id == self.OWNER_ID or user_id in self.ALLOWED_USER_IDS
+
     # ── Playback Settings ─────────────────────────────────────────────────────
     MAX_QUEUE_SIZE: int = 50
     AUTO_REFILL_COUNT: int = 3      # how many tracks to add on auto-refill
