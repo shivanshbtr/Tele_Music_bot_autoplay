@@ -3,11 +3,14 @@ Telegram Music Recommendation Bot
 Main entry point - handles bot initialization and startup
 """
 import logging
+from telegram import Update
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    TypeHandler,
     filters,
 )
 from telegram.request import HTTPXRequest
@@ -26,6 +29,29 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger(__name__)
+
+
+async def _check_authorized(update: Update, context) -> None:
+    """
+    Runs before every other handler (group=-1). If TELEGRAM_OWNER_ID and/or
+    TELEGRAM_ALLOWED_USER_IDS are set, silently drops updates from anyone
+    not on that list — keeps this a personal bot instead of a public one.
+    If neither is set, the bot stays open to everyone (unchanged behavior).
+    """
+    user = update.effective_user
+    if not user:
+        return
+
+    cfg = Config()
+    if cfg.is_allowed(user.id):
+        return
+
+    logger.info("Ignored update from unauthorized user_id=%s", user.id)
+    if update.callback_query:
+        await update.callback_query.answer()  # clear the loading spinner, no message
+    # No reply for messages/commands either — stay silent so the bot's
+    # existence/behavior isn't revealed to strangers who stumble onto it.
+    raise ApplicationHandlerStop
 
 
 def main() -> None:
@@ -62,6 +88,9 @@ def main() -> None:
     cb = CallbackHandlers()
     msg = MessageHandlers()
 
+    # ── Authorization Gate (runs first, before any other handler) ──────────────
+    app.add_handler(TypeHandler(Update, _check_authorized), group=-1)
+
     # ── Command Handlers ──────────────────────────────────────────────────────
     app.add_handler(CommandHandler("start", cmd.start))
     app.add_handler(CommandHandler("help", cmd.help))
@@ -79,6 +108,7 @@ def main() -> None:
     app.add_handler(CommandHandler("now", cmd.now_playing))
     app.add_handler(CommandHandler("autoplay", cmd.autoplay))
     app.add_handler(CommandHandler("stop", cmd.stop_autoplay))
+    app.add_handler(CommandHandler("updatecookies", cmd.update_cookies))
 
     # ── Callback Query Handlers ───────────────────────────────────────────────
     app.add_handler(CallbackQueryHandler(cb.handle_play, pattern=r"^play:"))
@@ -98,6 +128,7 @@ def main() -> None:
     # ── Message Handlers ──────────────────────────────────────────────────────
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg.handle_text))
     app.add_handler(MessageHandler(filters.AUDIO, msg.handle_audio))
+    app.add_handler(MessageHandler(filters.Document.ALL, msg.handle_document))
 
     # ── Error Handler ─────────────────────────────────────────────────────────
     app.add_error_handler(handle_error)
