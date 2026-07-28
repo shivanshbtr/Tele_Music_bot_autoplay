@@ -184,7 +184,7 @@ class CommandHandlers:
 
         if not artist_name:
             await update.message.reply_text(
-                "🎤 Please provide an artist name: `/artist Taylor Swift`",
+                "🎤 Please provide an artist name: /artist Taylor Swift",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
