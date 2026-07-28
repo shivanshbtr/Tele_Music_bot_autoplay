@@ -316,6 +316,38 @@ class CommandHandlers:
             parse_mode=ParseMode.MARKDOWN,
         )
 
+    # ── /updatecookies ────────────────────────────────────────────────────────
+
+    async def update_cookies(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        /updatecookies — owner-only. Lets you refresh the yt-dlp cookies.txt
+        by sending the file directly in Telegram, so you never need to SSH
+        into the server just to fix the "Sign in to confirm you're not a
+        bot" wall.
+
+        Flow: /updatecookies -> bot asks you to send the file -> you send
+        cookies.txt as a document -> handlers/messages.py's handle_document
+        saves it and confirms.
+        """
+        user = update.effective_user
+
+        if not cfg.OWNER_ID or user.id != cfg.OWNER_ID:
+            # Stay silent/vague on purpose — don't reveal this command exists
+            # to non-owners.
+            await update.message.reply_text("⚠️ Unknown command.")
+            return
+
+        context.user_data["awaiting_cookies"] = True
+        await update.message.reply_text(
+            "🍪 *Send your new cookies.txt now.*\n\n"
+            "Export it (Netscape format) from a logged-in YouTube session "
+            "using a browser extension like 'Get cookies.txt LOCALLY', "
+            "then send the file here as a *document* (not pasted text).\n\n"
+            "It will overwrite the current cookies file immediately — "
+            "no restart needed.",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
     # ── /stop ─────────────────────────────────────────────────────────────────
 
     async def stop_autoplay(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
