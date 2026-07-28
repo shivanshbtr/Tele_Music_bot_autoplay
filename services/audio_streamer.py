@@ -6,9 +6,12 @@ import asyncio
 import logging
 import os
 import tempfile
+import time
 from typing import Optional
 
 import yt_dlp
+from telegram import Bot
+from telegram.error import TelegramError
 
 from config import Config
 
@@ -26,20 +29,36 @@ _YTDLP_SOCKET_TIMEOUT = 30
 # cookie-authenticated fallback.
 _PLAYER_CLIENTS = ["android", "ios", "web"]
 
+# Don't DM the owner on every single failed track — once every 30 minutes
+# is plenty to know cookies need refreshing.
+_OWNER_NOTIFY_COOLDOWN = 1800
+
 
 class AudioStreamer:
 
     def __init__(self) -> None:
         cfg = Config()
-        cookies_path = cfg.YTDLP_COOKIES_FILE
-        self._cookies_file = cookies_path if cookies_path and os.path.isfile(cookies_path) else None
-        if not self._cookies_file:
+        self._cookies_path = cfg.YTDLP_COOKIES_FILE
+        self._bot_token = cfg.TELEGRAM_BOT_TOKEN
+        self._owner_id = cfg.OWNER_ID
+        self._last_owner_notify = 0.0
+        if not (self._cookies_path and os.path.isfile(self._cookies_path)):
             logger.warning(
                 "No yt-dlp cookies file found at '%s'. If you keep hitting "
                 "'Sign in to confirm you're not a bot', export cookies.txt "
-                "from a logged-in YouTube session (see README).",
-                cookies_path,
+                "from a logged-in YouTube session (see README), or send it "
+                "via /updatecookies.",
+                self._cookies_path,
             )
+
+    @property
+    def _cookies_file(self) -> Optional[str]:
+        # Re-checked on every call (cheap stat) rather than cached once at
+        # startup, so a cookies.txt dropped in later via /updatecookies is
+        # picked up immediately without restarting the bot.
+        if self._cookies_path and os.path.isfile(self._cookies_path):
+            return self._cookies_path
+        return None
 
     async def download_audio(self, video_id: str) -> Optional[str]:
         """
@@ -54,6 +73,7 @@ class AudioStreamer:
         loop = asyncio.get_running_loop()   # get_running_loop() replaces deprecated get_event_loop()
 
         last_error: Optional[Exception] = None
+        any_bot_check = False
         for client in _PLAYER_CLIENTS:
             tmp_dir = tempfile.mkdtemp()
             output_template = os.path.join(tmp_dir, "%(title)s.%(ext)s")
@@ -88,6 +108,7 @@ class AudioStreamer:
             except Exception as e:
                 last_error = e
                 is_bot_check = "sign in" in str(e).lower() or "confirm you" in str(e).lower()
+                any_bot_check = any_bot_check or is_bot_check
                 logger.warning(
                     "yt-dlp (%s client) failed for video_id=%s%s: %s",
                     client, video_id, " [bot-check]" if is_bot_check else "", e,
@@ -96,7 +117,40 @@ class AudioStreamer:
                 continue
 
         logger.error("Audio download error for video_id=%s: all player clients failed (%s)", video_id, last_error)
+
+        # All clients failed and at least one looked like YouTube's bot-check
+        # wall (rather than e.g. a network blip) — that almost always means
+        # cookies.txt has expired. Let the owner know directly so they don't
+        # have to notice missing music before realizing why.
+        if any_bot_check:
+            asyncio.create_task(self._notify_owner_cookies_expired())
+
         return None
+
+    async def _notify_owner_cookies_expired(self) -> None:
+        """DM the owner that cookies.txt likely needs refreshing, rate-limited
+        so a burst of failed tracks doesn't spam multiple messages."""
+        if not self._owner_id or not self._bot_token:
+            return
+
+        now = time.monotonic()
+        if now - self._last_owner_notify < _OWNER_NOTIFY_COOLDOWN:
+            return
+        self._last_owner_notify = now
+
+        try:
+            bot = Bot(token=self._bot_token)
+            await bot.send_message(
+                chat_id=self._owner_id,
+                text=(
+                    "🍪 *Cookies expired* — YouTube is blocking downloads with "
+                    "\"Sign in to confirm you're not a bot\".\n\n"
+                    "Run /updatecookies and send a fresh cookies.txt to fix it."
+                ),
+                parse_mode="Markdown",
+            )
+        except TelegramError as e:
+            logger.error("Failed to notify owner about expired cookies: %s", e)
 
     def _download(self, url: str, opts: dict) -> None:
         with yt_dlp.YoutubeDL(opts) as ydl:
