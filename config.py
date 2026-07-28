@@ -88,31 +88,31 @@ class Config:
 I'm your personal music recommendation assistant. Here's what I can do:
 
 🔍 *Search & Play*
-`/search <song name>` — Find and play any track
-`/trending` — Show today's trending tracks
+/search <song name> — Find and play any track
+/trending — Show today's trending tracks
 
 🎯 *Recommendations*
-`/recommend` — Get songs based on your history
-`/mood` — Music for your current mood
-`/genre` — Browse by genre
-`/artist <name>` — Similar artists
+/recommend — Get songs based on your history
+/mood — Music for your current mood
+/genre — Browse by genre
+/artist <name> — Similar artists
 
 📋 *Queue Management*
-`/queue` — View your current queue
-`/skip` — Skip current track
-`/clear` — Clear the queue
-`/now` — Now playing info
+/queue — View your current queue
+/skip — Skip current track
+/clear — Clear the queue
+/now — Now playing info
 
 🔄 *Seamless Autoplay*
-`/autoplay` — Enable Spotify-like continuous playback
+/autoplay — Enable Spotify-like continuous playback
   • Prefetches next track while current one plays
   • Auto-queues 3 similar tracks each time a song starts
   • Seamlessly streams until you say /stop
-`/stop` — Stop autoplay
+/stop — Stop autoplay
 
 📚 *History & Playlists*
-`/history` — Your recently played tracks
-`/playlist` — Manage saved playlists
+/history — Your recently played tracks
+/playlist — Manage saved playlists
 
 Just send me a *song name* or *artist* and I'll find it for you! 🎶
 """
@@ -121,29 +121,29 @@ Just send me a *song name* or *artist* and I'll find it for you! 🎶
 🎵 *MusicBot Commands*
 
 *Playback*
-• `/search <query>` — Search for tracks
-• `/now` — Now playing
-• `/skip` — Skip current track
+• /search <query> — Search for tracks
+• /now — Now playing
+• /skip — Skip current track
 
 *Seamless Autoplay 🔄*
-• `/autoplay` — Start Spotify-like continuous playback
+• /autoplay — Start Spotify-like continuous playback
   Prefetches next song, auto-queues similar tracks
-• `/stop` — Stop autoplay
+• /stop — Stop autoplay
 
 *Discovery*
-• `/recommend` — Personalized picks
-• `/trending` — Hot right now
-• `/mood` — Mood-based music
-• `/genre` — Genre explorer
-• `/artist <name>` — Artist recommendations
+• /recommend — Personalized picks
+• /trending — Hot right now
+• /mood — Mood-based music
+• /genre — Genre explorer
+• /artist <name> — Artist recommendations
 
 *Queue*
-• `/queue` — View queue
-• `/clear` — Clear queue (also stops autoplay)
+• /queue — View queue
+• /clear — Clear queue (also stops autoplay)
 
 *Library*
-• `/history` — Play history
-• `/playlist` — Your playlists
+• /history — Play history
+• /playlist — Your playlists
 
 💡 *Tip:* Hit /autoplay after your first song for a seamless infinite stream!
 """
