@@ -3,7 +3,7 @@ Telegram Music Recommendation Bot
 Main entry point - handles bot initialization and startup
 """
 import logging
-from telegram import Update
+from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault, Update
 from telegram.ext import (
     Application,
     ApplicationHandlerStop,
@@ -29,6 +29,59 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger(__name__)
+
+# Commands shown in Telegram's native "/" menu (the tappable autocomplete
+# list next to the text box). This is separate from — and in addition to —
+# the plain-text /command mentions in WELCOME_MESSAGE/HELP_MESSAGE, which
+# Telegram auto-links as long as they aren't wrapped in `code` formatting.
+_PUBLIC_COMMANDS = [
+    BotCommand("start", "Welcome message & feature overview"),
+    BotCommand("help", "Full command reference"),
+    BotCommand("search", "Search for a song or artist"),
+    BotCommand("recommend", "Get personalized recommendations"),
+    BotCommand("trending", "Today's top tracks"),
+    BotCommand("mood", "Pick a mood for an instant playlist"),
+    BotCommand("genre", "Browse by genre"),
+    BotCommand("artist", "Artist top tracks + similar artists"),
+    BotCommand("queue", "View current playback queue"),
+    BotCommand("skip", "Skip to next queued track"),
+    BotCommand("clear", "Clear queue and stop"),
+    BotCommand("now", "Show now-playing card"),
+    BotCommand("autoplay", "Start seamless continuous playback"),
+    BotCommand("stop", "Stop autoplay"),
+    BotCommand("history", "Recently played tracks"),
+    BotCommand("playlist", "Saved playlists & liked tracks"),
+]
+
+
+async def _setup_command_menu(app: Application) -> None:
+    """
+    Populate Telegram's native command menu. Runs once at startup
+    (Application post_init hook).
+
+    /updatecookies is deliberately NOT in the default (public) list — it's
+    only added to a chat-scoped menu for TELEGRAM_OWNER_ID, so it doesn't
+    advertise itself to anyone else even though the auth gate would block
+    them from using it anyway.
+    """
+    await app.bot.set_my_commands(_PUBLIC_COMMANDS, scope=BotCommandScopeDefault())
+
+    cfg = Config()
+    if cfg.OWNER_ID:
+        owner_commands = _PUBLIC_COMMANDS + [
+            BotCommand("updatecookies", "Push a fresh cookies.txt (owner only)")
+        ]
+        try:
+            await app.bot.set_my_commands(
+                owner_commands, scope=BotCommandScopeChat(chat_id=cfg.OWNER_ID)
+            )
+        except Exception as e:
+            # Fails if the owner hasn't started a chat with the bot yet —
+            # harmless, the default menu still applies to them meanwhile.
+            logger.warning(
+                "Could not set owner-specific command menu (will retry on "
+                "next restart once the owner has messaged the bot): %s", e
+            )
 
 
 async def _check_authorized(update: Update, context) -> None:
@@ -80,6 +133,7 @@ def main() -> None:
         .token(config.TELEGRAM_BOT_TOKEN)
         .request(request)
         .concurrent_updates(True)
+        .post_init(_setup_command_menu)
         .build()
     )
 
